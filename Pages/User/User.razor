@@ -1,0 +1,87 @@
+﻿@page "/user"
+@inject Microsoft.AspNetCore.Components.NavigationManager navigation
+@inject Services.UserService userService
+
+
+<h3>User</h3>
+
+@if (users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div @onclick="showForm">
+        <span class="oi oi-plus" aria-hidden="true"></span> Add user
+    </div>
+    <form class="@formClass">
+        <div class="did-floating-label-content">
+            <input class="did-floating-input" type="text" placeholder=" " @bind="newUser.UserName">
+            <label class="did-floating-label">UserName</label>
+        </div>
+        <div class="did-floating-label-content">
+            <input class="did-floating-input" type="text" placeholder=" " @bind="newUser.FirstName">
+            <label class="did-floating-label">FirstNamwe</label>
+        </div>
+        <div class="did-floating-label-content">
+            <input class="did-floating-input" type="text" placeholder=" " @bind="newUser.LastName">
+            <label class="did-floating-label">LastName</label>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="button-outline button-outline-info" @onclick="CreateUser">Save</button>
+            <button class="button-outline button-outline-danger" style="margin-left:20px;" @onclick="Cancel">Cancel</button>
+        </div>
+    </form>
+    <ul class="list-unstyled">
+        @foreach (var user in users)
+        {
+            <li>
+                @user.UserName
+            </li>
+        }
+    </ul>
+}
+
+
+@code {
+    private Data.User newUser = new();
+    private List<Data.User> users;
+    private bool show = false;
+    private string formClass => show ? null : "hidden";
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await userService.Get();
+    }
+
+    protected void showForm()
+    {
+        show = !show;
+    }
+
+    protected async Task CreateUser()
+    {
+        bool va;
+        var x = users.Find(x => x.UserName == newUser.UserName);
+        if (x != null)
+        {
+            va = await userService.Update(x.Id, newUser);
+            await App.Current.MainPage.DisplayAlert("Update Success", $"User existed in database and has been update successfully", "OK");
+            this.StateHasChanged();
+            show = false;
+        }
+        else
+        {
+            var rs = await userService.Insert(newUser);
+            await App.Current.MainPage.DisplayAlert("Update Success", $"User existed in database and has been update successfully", "OK");
+            this.StateHasChanged();
+            show = false;
+        }
+    }
+
+    protected void Cancel()
+    {
+        show = false;
+    }
+}

@@ -1,0 +1,80 @@
+﻿@page "/"
+@page "/login"
+@layout AuthLayout
+@using System.ComponentModel.DataAnnotations
+@inject Microsoft.AspNetCore.Components.NavigationManager navigation
+@using MauiApp1.Data
+@inject Services.AuthService authService
+@using System.Text
+@using Newtonsoft.Json
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@using System.IdentityModel.Tokens.Jwt;
+@using System.Security.Claims;
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <h3>Đăng nhập</h3>
+
+    <EditForm Model="@model" OnValidSubmit="OnValidSubmit">
+        <DataAnnotationsValidator />
+        <MudCard>
+            <MudCardContent>
+                <MudTextField Label="Tên đăng nhập" HelperText="Tối đa 8 kí tự"
+                @bind-Value="model.Username" For="@(() => model.Username)" />
+                <MudTextField Label="Mật khẩu" HelperText="Nhập mật khẩu mạnh" Class="mt-3"
+                @bind-Value="model.Password" For="@(() => model.Password)" InputType="InputType.Password" />
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Đăng nhập</MudButton>
+                <MudButton Variant="Variant.Filled" 
+                            Color="Color.Primary" 
+                            Class="ml-auto"
+                            Href="/register">
+                            Đăng kí
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </EditForm>
+</MudContainer>
+@code {
+    LoginAccountForm model = new ();
+
+    private async void OnValidSubmit(EditContext context)
+    {
+        var token = await authService.Login(model);
+ 
+        if (token != null)
+        {
+            await tokenService.SetToken(token);
+
+            string[] contents = token.AuthToken.Split('.');
+
+            //string payload = contents[1];
+            //byte[] bytes = Convert.FromBase64String(payload);
+            //string decodedString = Encoding.UTF8.GetString(bytes);
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            // 5. Read the JWT and parse it into a JwtSecurityToken object
+            var jwt = tokenHandler.ReadJwtToken(token.AuthToken);
+
+            // 6. Get the payload (claims) from the JwtSecurityToken
+            var payload = jwt.Payload;
+
+            foreach (Claim claim in payload.Claims)
+            {
+                if(claim.Type == "UserName")
+                {
+                    await localStorage.SetItemAsync("userName", claim.Value);
+                }
+            }
+
+            //var user = JsonConvert.DeserializeObject<User>(decodedString);
+            //await localStorage.SetItemAsync("userName", user.UserName);
+
+            navigation.NavigateTo("/devices");
+        }
+        StateHasChanged();
+    }
+
+}
+

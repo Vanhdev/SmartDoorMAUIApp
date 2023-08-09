@@ -1,0 +1,60 @@
+﻿@page "/devices"
+@layout MainLayout
+@inject MauiApp1.Services.UserService userService
+@using MauiApp1.Data
+@inject Microsoft.AspNetCore.Components.NavigationManager navigation
+
+<h2>All devices</h2>
+@if (Devices is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <MudGrid>
+        @foreach (var device in Devices)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard @onclick="(e) => OnClickEvent(e, device.Name)">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@device.Name</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.Lock" Color="Color.Default" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText>Type: @device.Type</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Text" Color="Color.Primary">More</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public string UserName { get; set; }
+
+    private List<Device> Devices;
+    private string deviceName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userName = await localStorage.GetItemAsync<string>("userName");
+        var token = await tokenService.GetToken();
+        Devices = await userService.GetDevices(userName, token);
+        this.StateHasChanged();
+    }
+
+    private void OnClickEvent(MouseEventArgs e, string deviceName)
+    {
+        string url = $"/devices/lock/{deviceName}";
+
+        navigation.NavigateTo(url);
+    }
+}

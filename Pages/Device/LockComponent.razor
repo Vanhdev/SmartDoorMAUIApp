@@ -1,0 +1,89 @@
+﻿@page "/devices/lock/{deviceName}"
+@inject MauiApp1.Services.UserService userService
+@using Services
+@using System.Text
+@inject Services.MQTTService mqttService
+
+@if (Lock is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <MudCard Style="width:fit-content;margin:auto">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Lock.Name</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudIconButton Icon="@icon" Color="Color.Default" />
+            <MudText>Type: @Lock.Type</MudText>
+        </MudCardContent>
+        <MudCardActions>
+            <MudText Style="margin-right:16px">LOCK</MudText>
+            <MudSwitch @bind-Checked="@status" Color="Color.Primary" @onclick="LockChange"/>
+            <MudText>UNLOCK</MudText>
+        </MudCardActions>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public string deviceName { get; set; }
+
+    public string icon;
+    private Data.Device Lock;
+    public bool status = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string topic = $"Get {deviceName} status";
+        await mqttService.PublishAsync(topic,"1");
+        MQTTService.mqttClient.ApplicationMessageReceivedAsync += e =>
+        {
+            var res = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
+            string[] infos = res.Split(',');
+            if (infos[0] == deviceName)
+            {
+                if (infos[1] == "ON") status = true;
+                else status = false;
+
+                if (status == true) icon = Icons.Material.Outlined.LockOpen;
+                else icon = Icons.Material.Outlined.Lock;
+                InvokeAsync(StateHasChanged);
+            }
+            return Task.CompletedTask;
+        };
+
+        var userName = await localStorage.GetItemAsync<string>("userName");
+        var token = await tokenService.GetToken();
+        Lock = await userService.GetDevice(userName, token, deviceName);
+        this.StateHasChanged();
+    }
+
+    private async Task LockChange()
+    {
+        string topic = $"ESP32/LOCK_COMMAND/{deviceName}";
+        string payload = status ? "OFF" : "ON";
+        await mqttService.PublishAsync(topic, payload);
+
+        MQTTService.mqttClient.ApplicationMessageReceivedAsync += e =>
+        {
+            var res = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
+            string[] infos = res.Split(',');
+            if (infos[0] == deviceName)
+            {
+                if (infos[1] == "ON") status = true;
+                else status = false;
+            }
+
+            return Task.CompletedTask;
+
+        };
+
+        if (status == true) icon = Icons.Material.Outlined.Lock;
+        else icon = Icons.Material.Outlined.LockOpen;
+        this.StateHasChanged();
+    }
+}
